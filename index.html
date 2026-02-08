@@ -1,280 +1,231 @@
-import React, { useState, useEffect } from 'react';
-import { Terminal, ArrowRight, Copy, Check, Zap, Globe, Shield } from 'lucide-react';
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Crying API</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+    :root{ --bg:#FAF7F2; --text:#111; }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:"Space Mono","PingFang SC","Microsoft YaHei",monospace;
+      min-height:100vh; overflow:hidden;
+    }
+    .container{
+      max-width:1200px; margin:0 auto; padding:64px 16px;
+      min-height:100vh; display:flex; align-items:center; justify-content:center;
+      position:relative;
+    }
+    .grid{ width:100%; display:flex; flex-direction:column; gap:32px; z-index:2; }
+    @media(min-width:1024px){ .grid{flex-direction:row; gap:56px;} .left,.right{width:50%;} .container{padding:80px 24px;} }
+    .right{ display:flex; justify-content:center; }
+    @media(min-width:1024px){ .right{ justify-content:flex-end; } }
+    h1{ margin:0 0 20px 0; font-weight:700; letter-spacing:-.04em; line-height:1.05; font-size:44px; }
+    @media(min-width:640px){ h1{font-size:56px;} }
+    @media(min-width:1024px){ h1{font-size:72px;} }
+    p{ margin:0; max-width:560px; font-size:18px; line-height:1.75; opacity:.9; }
+    @media(min-width:640px){ p{font-size:20px;} }
 
-// --- Components ---
+    .label{
+      position:relative; display:inline-block; padding:2px 10px;
+      border:2px solid #000; transform:rotate(-1deg);
+      box-shadow:4px 4px 0 rgba(0,0,0,1); overflow:hidden;
+      user-select:none; vertical-align:middle; margin:8px 0;
+    }
+    .label .base,.label .wipe{ position:absolute; inset:0; }
+    .label .base{ background:#67C3F8; z-index:0; }
+    .label .wipe{ background:#F97316; z-index:1; width:0%; transition:width 1000ms ease-in-out; }
+    .label .text{ position:relative; z-index:2; padding:0 2px; display:inline-block; }
 
-const AnimatedLabel = () => {
-  const colors = [
-    '#67C3F8', // Blue (Original)
-    '#F97316', // Orange
-    '#10B981', // Emerald
-    '#FDE047', // Yellow
-    '#F472B6', // Pink
-    '#A78BFA', // Purple
-  ];
-  
-  const [currentColor, setCurrentColor] = useState(colors[0]);
-  const [nextColor, setNextColor] = useState(colors[1]);
-  const [isAnimating, setIsAnimating] = useState(false);
+    .badges{
+      margin-top:44px; display:flex; gap:28px; flex-wrap:wrap;
+      align-items:center; opacity:.65; filter:grayscale(1);
+      transition:filter .35s ease, opacity .35s ease;
+    }
+    .badges:hover{ filter:grayscale(0); opacity:.9; }
+    .badge{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+    .ico{ width:16px; height:16px; }
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Pick a random color distinct from the current one
-      let randomColor;
-      do {
-        randomColor = colors[Math.floor(Math.random() * colors.length)];
-      } while (randomColor === currentColor);
-      
-      setNextColor(randomColor);
-      setIsAnimating(true);
+    .window{ width:100%; max-width:560px; position:relative; }
+    .term{
+      background:#1a1a1a; border:2px solid #000; border-radius:2px;
+      box-shadow:8px 8px 0 rgba(0,0,0,1);
+      padding:24px; min-height:360px; position:relative;
+      display:flex; flex-direction:column;
+    }
+    .traffic{ position:absolute; top:16px; right:16px; display:flex; gap:8px; }
+    .dot{ width:12px; height:12px; border-radius:999px; border:1px solid rgba(0,0,0,.35); }
+    .r{background:#ef4444}.y{background:#f59e0b}.g{background:#22c55e}
+    .note{ margin-top:6px; margin-bottom:16px; font-size:12px; color:#6b7280; user-select:none; }
+    pre{ margin:0; padding:0 0 14px 0; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
+    pre::-webkit-scrollbar{ display:none; }
+    .line{ white-space:nowrap; font-size:14px; line-height:1.8; color:#fff; }
+    .user{ color:#4ade80; font-weight:700; }
+    .path{ color:#60a5fa; font-weight:700; }
+    .export{ color:#ff79c6; }
+    .eq{ color:#ff79c6; }
+    .str{ color:#a5d6ff; }
+    .cmd{ color:#f1fa8c; font-weight:700; }
 
-      // Wait for the slide animation to finish (1s), then update the base color
-      setTimeout(() => {
-        setCurrentColor(randomColor);
-        setIsAnimating(false);
-      }, 1000); // Matches the duration-1000 class
-    }, 7000); // 7 seconds interval
+    .copy{
+      position:absolute; bottom:16px; right:16px; z-index:5;
+      border:1px solid #4b5563; background:#2a2a2a;
+      border-radius:6px; padding:8px; cursor:pointer;
+    }
+    .copy:hover{ background:#333; }
+    .copy svg{ width:16px; height:16px; display:block; }
 
-    return () => clearInterval(interval);
-  }, [currentColor]);
+    .result{
+      margin-top:auto; padding-top:14px; border-top:1px solid #2a2a2a;
+      color:#d1d5db; font-size:14px; line-height:1.7;
+    }
+    .muted{ color:#9ca3af; display:block; margin-bottom:6px; }
+    .cursor{ display:inline-block; width:8px; height:16px; background:#6b7280; margin-left:6px; vertical-align:middle; animation:blink 1s steps(2,end) infinite; }
+    @keyframes blink{ 50%{opacity:0;} }
 
-  return (
-    <span className="relative inline-block px-2 border-2 border-black transform -rotate-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] my-2 overflow-hidden align-middle select-none">
-      {/* Base Layer (Current Color) */}
-      <div 
-        className="absolute inset-0 z-0" 
-        style={{ backgroundColor: currentColor }} 
-      />
-      
-      {/* Wiper Layer (Next Color) - Slides in from left */}
-      <div 
-        className={`absolute top-0 bottom-0 left-0 z-10 transition-[width] ease-in-out duration-1000 ${isAnimating ? 'w-full' : 'w-0'}`}
-        style={{ backgroundColor: nextColor }} 
-      />
-      
-      {/* Text Layer (Must be on top) */}
-      <span className="relative z-20">Claude Code</span>
-    </span>
-  );
-};
+    .decor{ position:absolute; inset:0; pointer-events:none; user-select:none; overflow:hidden; z-index:1; opacity:.9; }
+    .cloud{ position:absolute; stroke:#111; fill:#fff; stroke-width:2.5; opacity:.85; }
+    .cloud.a{ top:80px; left:28px; width:96px; height:96px; transform:rotate(-12deg); }
+    .cloud.b{ bottom:40px; right:40px; width:128px; height:128px; }
+    @media(min-width:1024px){ .cloud.a{left:80px} .cloud.b{right:33%} }
+  </style>
+</head>
 
-const Hero = () => {
-  return (
-    <div className="relative overflow-hidden w-full min-h-screen flex flex-col lg:flex-row items-center justify-center max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-0">
-      
-      {/* Decorative Elements (Clouds & Shapes) */}
-      <FloatingElements />
+<body>
+  <div class="container">
+    <div class="decor" aria-hidden="true">
+      <svg class="cloud a" viewBox="0 0 100 100">
+        <path d="M25,60 Q10,60 10,45 Q10,30 25,30 Q30,10 50,10 Q70,10 75,30 Q90,30 90,45 Q90,60 75,60 Z"></path>
+      </svg>
+      <svg class="cloud b" viewBox="0 0 100 100">
+        <path d="M25,65 Q5,65 5,45 Q5,25 25,25 Q35,5 55,5 Q75,5 80,25 Q95,25 95,45 Q95,65 80,65 Z"></path>
+      </svg>
+    </div>
 
-      {/* Left Content */}
-      <div className="w-full lg:w-1/2 z-10 flex flex-col justify-center mb-12 lg:mb-0">
-        <h1 className="font-mono text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] text-black mb-8 tracking-tighter">
-          专业<br />
-          <AnimatedLabel /><br />
+    <div class="grid">
+      <div class="left">
+        <h1>
+          专业<br/>
+          <span class="label" id="label">
+            <span class="base" id="base"></span>
+            <span class="wipe" id="wipe"></span>
+            <span class="text">Claude Code</span>
+          </span><br/>
           中转服务
         </h1>
-        
-        <p className="font-mono text-lg sm:text-xl text-gray-800 mb-10 max-w-xl leading-relaxed">
-          提供专业的ClaudeCode中转服务，每次调用都来自纯血Max号池。
-        </p>
 
-        {/* Buttons removed here */}
+        <p>提供专业的 ClaudeCode 中转服务，每次调用都来自纯血 Max 号池。</p>
 
-        {/* Trust Badges */}
-        <div className="mt-16 flex items-center gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-          <div className="flex items-center gap-2 font-mono text-sm font-bold"><Globe size={16}/> 99.9% 在线率</div>
-          <div className="flex items-center gap-2 font-mono text-sm font-bold"><Shield size={16}/> 企业级支持</div>
+        <div class="badges">
+          <div class="badge">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"></path>
+            </svg>
+            99.9% 在线率
+          </div>
+          <div class="badge">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+            </svg>
+            企业级支持
+          </div>
         </div>
       </div>
 
-      {/* Right Content (Interactive Terminal) */}
-      <div className="w-full lg:w-1/2 z-20 flex justify-center lg:justify-end">
-        <CodeWindow />
-      </div>
-    </div>
-  );
-};
+      <div class="right">
+        <div class="window">
+          <div class="term">
+            <div class="traffic"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+            <div class="note"># Initializing environment variables...</div>
+            <pre id="code"></pre>
 
-const CodeWindow = () => {
-  const [copied, setCopied] = useState(false);
+            <button class="copy" id="copy" title="Copy">
+              <span id="icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </span>
+            </button>
 
-  const codeSnippet = `crying@mma:~/my-project$ export ANTHROPIC_BASE_URL="https://api.newapi.com/anthropic"
-crying@mma:~/my-project$ export ANTHROPIC_API_KEY="sk-..."
-crying@mma:~/my-project$ export ANTHROPIC_MODEL="claude-opus-4-6"
-crying@mma:~/my-project$ claude`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(codeSnippet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Helper function to highlight shell commands
-  const renderShellLine = (line, i) => {
-    const prompt = "crying@mma:~/my-project$";
-    
-    if (line.startsWith(prompt)) {
-        const commandPart = line.substring(prompt.length);
-        return (
-            <div key={i} className="font-mono whitespace-nowrap">
-                <span className="text-green-400 font-bold">crying@mma</span>
-                <span className="text-white">:</span>
-                <span className="text-blue-400 font-bold">~/my-project</span>
-                <span className="text-white">$</span>
-                {/* Command Highlighting */}
-                {commandPart.split(' ').map((word, j) => {
-                     // Add a space before each word
-                    const prefix = j === 0 ? ' ' : ' ';
-                    if (word === 'export') return <span key={j} className="text-[#ff79c6]">{prefix}{word}</span>;
-                    if (word.startsWith('"')) return <span key={j} className="text-[#a5d6ff]">{prefix}{word}</span>;
-                    if (word.includes('=')) {
-                        const [key, val] = word.split('=');
-                        return (
-                            <span key={j}>
-                                {prefix}
-                                <span className="text-white">{key}</span>
-                                <span className="text-[#ff79c6]">=</span>
-                                <span className="text-[#a5d6ff]">{val}</span>
-                            </span>
-                        );
-                    }
-                    if (word === 'claude') return <span key={j} className="text-[#f1fa8c] font-bold">{prefix}{word}</span>;
-                    return <span key={j} className="text-white">{prefix}{word}</span>;
-                })}
+            <div class="result">
+              <span class="muted">Welcome to Claude Code (v4-6)</span>
+              “你好！我是 Claude，一个由 Anthropic 开发的 AI 助手。今天有什么我可以帮你的吗？”
+              <span class="cursor"></span>
             </div>
-        )
-    }
-    return (
-        <div key={i} className="font-mono text-gray-300 whitespace-pre-wrap">
-             {line}
-        </div>
-    );
-  }
-
-  return (
-    <div className="relative w-full max-w-xl">
-      {/* Window Header removed */}
-
-      {/* Window Body */}
-      <div className="bg-[#1a1a1a] border-2 border-black p-6 rounded-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative min-h-[360px] flex flex-col">
-        {/* Traffic Lights */}
-        <div className="absolute top-4 right-4 flex gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500 border border-black/50"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500 border border-black/50"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500 border border-black/50"></div>
-        </div>
-
-        <div className="mb-6 font-mono text-xs text-gray-500 mt-2 select-none">
-          # Initializing environment variables...
-        </div>
-        
-        {/* Code Content Container with hidden scrollbar */}
-        <div className="overflow-x-auto pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-           <div className="font-mono text-sm leading-loose min-w-max">
-            {codeSnippet.split('\n').map((line, i) => renderShellLine(line, i))}
-           </div>
-        </div>
-
-        {/* Copy Button */}
-        <button 
-          onClick={handleCopy}
-          className="absolute bottom-4 right-4 p-2 bg-[#2a2a2a] border border-gray-600 rounded hover:bg-[#333] transition-colors group z-20"
-        >
-          {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} className="text-gray-400 group-hover:text-white" />}
-        </button>
-        
-        {/* Terminal Result Simulation */}
-        <div className="mt-auto pt-4 border-t border-gray-800">
-          <div className="font-mono text-sm text-gray-300">
-             <span className="text-gray-500 mb-2 block">Welcome to Claude Code (v4-6)</span>
-             "你好！我是 Claude，一个由 Anthropic 开发的 AI 助手。今天有什么我可以帮你的吗？"
-             <span className="animate-pulse inline-block w-2 h-4 bg-gray-500 ml-1 align-middle"></span>
           </div>
         </div>
       </div>
     </div>
-  );
-};
-
-const FloatingElements = () => (
-  <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
-    {/* Cloud Top Left */}
-    <svg className="absolute top-20 left-10 lg:left-20 w-24 h-24 text-black opacity-80 transform -rotate-12" viewBox="0 0 100 100" fill="white" stroke="currentColor" strokeWidth="2.5">
-      <path d="M25,60 Q10,60 10,45 Q10,30 25,30 Q30,10 50,10 Q70,10 75,30 Q90,30 90,45 Q90,60 75,60 Z" />
-    </svg>
-
-    {/* Cloud Bottom Center/Right */}
-    <svg className="absolute bottom-10 right-10 lg:right-1/3 w-32 h-32 text-black opacity-80 z-0" viewBox="0 0 100 100" fill="white" stroke="currentColor" strokeWidth="2.5">
-      <path d="M25,65 Q5,65 5,45 Q5,25 25,25 Q35,5 55,5 Q75,5 80,25 Q95,25 95,45 Q95,65 80,65 Z" />
-    </svg>
-
-    {/* Geometric Shape (Cylinder) */}
-    <div className="absolute top-1/4 right-10 lg:right-20 animate-float hidden lg:block">
-      <svg width="60" height="80" viewBox="0 0 60 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M60 15C60 23.2843 46.5685 30 30 30C13.4315 30 0 23.2843 0 15C0 6.71573 13.4315 0 30 0C46.5685 0 60 6.71573 60 15Z" fill="#10B981" stroke="black" strokeWidth="2"/>
-        <path d="M0 15V65C0 73.2843 13.4315 80 30 80C46.5685 80 60 73.2843 60 65V15" fill="#10B981" stroke="black" strokeWidth="2"/>
-        <path d="M0 15C0 23.2843 13.4315 30 30 30C46.5685 30 60 23.2843 60 15" stroke="black" strokeWidth="2"/>
-      </svg>
-    </div>
-
-    {/* Diamond Shape */}
-    <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 lg:hidden">
-       <div className="w-8 h-8 border-2 border-black rotate-45 bg-transparent"></div>
-    </div>
-    
-     {/* Diamond Shape Top Right */}
-    <div className="absolute top-32 right-[20%] w-6 h-6 border-2 border-black rotate-45 bg-transparent hidden md:block"></div>
   </div>
-);
 
-const App = () => {
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-      
-      body {
-        background-color: #FAF7F2;
-      }
-      
-      .font-mono {
-        font-family: 'Space Mono', monospace;
-        /* Fallback for Chinese characters to system fonts */
-        font-family: 'Space Mono', 'PingFang SC', 'Microsoft YaHei', monospace;
-      }
-      
-      /* Utility for hiding scrollbar */
-      .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-      }
-      .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      
-      @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-        100% { transform: translateY(0px); }
-      }
-      
-      .animate-float {
-        animation: float 6s ease-in-out infinite;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
+  <script>
+    // label animation
+    const colors = ['#67C3F8','#F97316','#10B981','#FDE047','#F472B6','#A78BFA'];
+    let current = colors[0];
+    const base = document.getElementById('base');
+    const wipe = document.getElementById('wipe');
 
-  return (
-    <div className="min-h-screen flex flex-col font-sans text-black">
-      {/* Navbar removed */}
-      <main className="flex-grow flex flex-col justify-center">
-        <Hero />
-        {/* Features removed */}
-      </main>
-      {/* Footer removed */}
-    </div>
-  );
-};
+    setInterval(() => {
+      let next;
+      do { next = colors[Math.floor(Math.random()*colors.length)]; } while (next === current);
+      wipe.style.backgroundColor = next;
+      wipe.style.width = '100%';
+      setTimeout(() => {
+        current = next;
+        base.style.backgroundColor = current;
+        wipe.style.width = '0%';
+      }, 1000);
+    }, 7000);
 
-export default App;
+    // code render
+    const snippet = [
+      'crying@mma:~/my-project$ export ANTHROPIC_BASE_URL="https://api.newapi.com/anthropic"',
+      'crying@mma:~/my-project$ export ANTHROPIC_API_KEY="sk-..."',
+      'crying@mma:~/my-project$ export ANTHROPIC_MODEL="claude-opus-4-6"',
+      'crying@mma:~/my-project$ claude'
+    ].join('\\n');
+
+    const codeEl = document.getElementById('code');
+    function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    function lineHTML(line){
+      const prompt = 'crying@mma:~/my-project$';
+      if(line.startsWith(prompt)){
+        const cmd = line.slice(prompt.length).trim().split(' ');
+        let html = '<div class="line"><span class="user">crying@mma</span>:<span class="path">~/my-project</span>$';
+        for(const w of cmd){
+          if(w==='export') html += ' <span class="export">'+esc(w)+'</span>';
+          else if(w==='claude') html += ' <span class="cmd">'+esc(w)+'</span>';
+          else if(w.includes('=')){
+            const [k,...rest]=w.split('=');
+            html += ' <span>'+esc(k)+'</span><span class="eq">=</span><span class="str">'+esc(rest.join('='))+'</span>';
+          } else html += ' <span>'+esc(w)+'</span>';
+        }
+        return html + '</div>';
+      }
+      return '<div class="line" style="color:#d1d5db;white-space:pre-wrap;">'+esc(line)+'</div>';
+    }
+    codeEl.innerHTML = snippet.split('\\n').map(lineHTML).join('');
+
+    // copy button
+    const btn = document.getElementById('copy');
+    const icon = document.getElementById('icon');
+    function ok(){
+      icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"></path></svg>';
+      setTimeout(()=>{ icon.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>'
+      },2000);
+    }
+    btn.addEventListener('click', async ()=>{
+      try{ await navigator.clipboard.writeText(snippet); ok(); }
+      catch(e){
+        const ta=document.createElement('textarea'); ta.value=snippet; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok();
+      }
+    });
+  </script>
+</body>
+</html>
